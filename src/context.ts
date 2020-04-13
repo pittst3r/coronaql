@@ -1,8 +1,7 @@
 import parse from "csv-parse/lib/sync";
 import fs from "fs";
 import path from "path";
-import sha256 from "crypto-js/sha256";
-import { enc } from "crypto-js";
+import { hash, Cache, compact } from "./utils";
 
 interface ISourceRecord {
   date: string;
@@ -25,8 +24,8 @@ export interface IRecord {
   id: string;
   localeId: string;
   date: string;
-  cases: string;
-  deaths: string;
+  cases: number;
+  deaths: number;
 }
 
 export interface IDataStore {
@@ -35,40 +34,9 @@ export interface IDataStore {
   recordsByLocale: (localeId: string) => Array<IRecord>;
 }
 
-function compact<T>(arr: Array<T | null | undefined>): T[] {
-  return arr.reduce((memo, item) => {
-    if (item == null) {
-      return memo;
-    }
-
-    return memo.concat([item]);
-  }, [] as Array<T>);
-}
-
-function urlSafeSha256(value: string) {
-  return sha256(value)
-    .toString(enc.Base64)
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
-}
-
-function hash(record: any) {
-  let stringifiedRecord: string;
-
-  try {
-    stringifiedRecord = JSON.stringify(record);
-  } catch (err) {
-    // TODO: handle error better
-    throw "💥";
-  }
-
-  return urlSafeSha256(stringifiedRecord);
-}
-
 function fetchData(): IDataStore {
   const csv = fs.readFileSync(
-    path.join(__dirname, "../../covid-19-data/us-counties.csv")
+    path.join(__dirname, "../data/nyt-us/us-counties.csv")
   );
   const source: Array<ISourceRecord> = parse(csv, {
     columns: true
@@ -93,8 +61,8 @@ function fetchData(): IDataStore {
     id: hash([record.date, record.fips]),
     localeId: hash([record.county, record.state, record.fips]),
     date: record.date,
-    cases: record.cases,
-    deaths: record.deaths
+    cases: parseInt(record.cases),
+    deaths: parseInt(record.deaths)
   }));
 
   const recordsByLocale = (localeId: string) =>
@@ -112,8 +80,7 @@ function fetchData(): IDataStore {
   };
 }
 
-const fetchedData = fetchData();
-
 export class Context {
-  data = fetchedData;
+  store = fetchData();
+  cache = new Cache();
 }

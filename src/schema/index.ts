@@ -40,9 +40,11 @@ const Locale = objectType({
     t.string("name");
     t.connectionField("records", {
       type: Record,
-      async resolve(root, args, { data }, info) {
-        const records = data.recordsByLocale(root.id);
-        return connectionFromArray(records, args) as any;
+      async resolve(root, args, { cache, store }, info) {
+        return cache.fetch(
+          ["locale records", root.id, args],
+          () => connectionFromArray(store.recordsByLocale(root.id), args) as any
+        );
       }
     });
     t.list.field("subdivisions", {
@@ -71,8 +73,8 @@ const Query = queryType({
       args: {
         name: stringArg({ nullable: true })
       },
-      async resolve(root, args, { data }, info) {
-        return args.name ? data.localesByName(args.name) : data.locales;
+      async resolve(root, args, { store }, info) {
+        return args.name ? store.localesByName(args.name) : store.locales;
       }
     });
   }

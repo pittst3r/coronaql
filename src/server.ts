@@ -8,7 +8,7 @@ const port = 3000;
 
 const server = new ApolloServer({
   schema,
-  context: () => new Context()
+  context: new Context()
 });
 
 server.applyMiddleware({ app });
